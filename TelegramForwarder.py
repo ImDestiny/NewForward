@@ -15,7 +15,7 @@ user_client = None
 phone_number = None
 
 # Bot Client Setup
-bot = TelegramClient('bot_session', api_id=27866551, api_hash="76057a79a74262e29d6de1e9f41aab0d").start(bot_token=BOT_TOKEN)
+bot = TelegramClient('bot_session', api_id="27866551", api_hash="76057a79a74262e29d6de1e9f41aab0d").start(bot_token=BOT_TOKEN)
 
 # Settings storage
 settings_file = "settings.json"
