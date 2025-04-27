@@ -3,7 +3,6 @@ import json
 import os
 from telethon import TelegramClient, events
 from telethon.sync import TelegramClient as SyncTelegramClient
-from telethon.sessions import StringSession
 from telethon import errors
 
 # BOT Settings
@@ -68,12 +67,14 @@ async def login(event):
     if event.sender_id != OWNER_ID:
         return
     if phone_number is None:
-        await event.reply("Please send your phone number.")
-        phone_number = event.text.split(' ', 1)[1]  # Assuming phone number is sent in the same message
-        await event.reply(f"Sending login code to {phone_number}...")
-        async with SyncTelegramClient('user_session', api_id=YOUR_API_ID, api_hash="YOUR_API_HASH") as temp_client:
-            await temp_client.send_code_request(phone_number)
-        await event.reply(f"Code sent to {phone_number}. Please enter the code you received.")
+        try:
+            phone_number = event.text.split(' ', 1)[1]  # Get phone number after '/login'
+            await event.reply(f"Sending login code to {phone_number}...")
+            async with SyncTelegramClient('user_session', api_id=27866551, api_hash="76057a79a74262e29d6de1e9f41aab0d") as temp_client:
+                await temp_client.send_code_request(phone_number)
+            await event.reply(f"Code sent to {phone_number}. Please enter the code you received.")
+        except IndexError:
+            await event.reply("Please send your phone number after the /login command.")
     else:
         await event.reply("You are already in the login process. Please wait for the code to be entered.")
 
@@ -86,17 +87,17 @@ async def code_input(event):
     if phone_number is None:
         await event.reply("Please use the /login command first.")
         return
-    code = event.text.split(' ', 1)[1]  # Extract the code from the message
-    async with SyncTelegramClient('user_session', api_id=YOUR_API_ID, api_hash="YOUR_API_HASH") as temp_client:
-        try:
+    try:
+        code = event.text.split(' ', 1)[1]  # Extract the code from the message
+        async with SyncTelegramClient('user_session', api_id=27866551, api_hash="76057a79a74262e29d6de1e9f41aab0d") as temp_client:
             await temp_client.sign_in(phone_number, code)
             user_client = temp_client
             await event.reply(f"Login successful for {phone_number}!")
             phone_number = None  # Reset phone number for next login
-        except errors.SessionPasswordNeededError:
-            await event.reply("Two-step password is enabled. Please provide the password.")
-        except Exception as e:
-            await event.reply(f"Login failed: {e}")
+    except errors.SessionPasswordNeededError:
+        await event.reply("Two-step password is enabled. Please provide the password.")
+    except Exception as e:
+        await event.reply(f"Login failed: {e}")
 
 # /list_chats command
 @bot.on(events.NewMessage(pattern='/list_chats'))
