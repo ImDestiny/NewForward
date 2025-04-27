@@ -6,15 +6,15 @@ from telethon.sync import TelegramClient as SyncTelegramClient
 from telethon import errors
 
 # BOT Settings
-BOT_TOKEN = "7775154408:AAEmBTVW9Vk5Y0V_bu9jTY8VXy07Rcd0uZw"  # Replace with your bot token
-OWNER_ID = 5437233066  # Replace with your Telegram user ID (without quotes)
+BOT_TOKEN = ""  # Replace with your bot token
+OWNER_ID =   # Replace with your Telegram user ID (without quotes)
 
 # User Client Setup
 user_client = None
 phone_number = None
 
 # Bot Client Setup
-bot = TelegramClient('bot_session', api_id="27866551", api_hash="76057a79a74262e29d6de1e9f41aab0d").start(bot_token=BOT_TOKEN)
+bot = TelegramClient('bot_session', api_id="", api_hash="").start(bot_token=BOT_TOKEN)
 
 # Settings storage
 settings_file = "settings.json"
