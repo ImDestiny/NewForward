@@ -7,11 +7,11 @@ from telethon.sessions import StringSession
 from telethon import errors
 
 # BOT Settings
-BOT_TOKEN = "YOUR_BOT_TOKEN"
-OWNER_ID = YOUR_TELEGRAM_USER_ID   # <- Only your Telegram ID can control the bot
+BOT_TOKEN = "7775154408:AAHUqkKcgzOoGjUM2x13yT66lYBScUyOyFw"
+OWNER_ID = "5437233066"   # <- Only your Telegram ID can control the bot
 
 # Bot Client
-bot = TelegramClient('bot_session', api_id=YOUR_API_ID, api_hash="YOUR_API_HASH").start(bot_token=BOT_TOKEN)
+bot = TelegramClient('bot_session', api_id="27866551", api_hash="76057a79a74262e29d6de1e9f41aab0d").start(bot_token=BOT_TOKEN)
 
 # User Client (for forwarding)
 user_client = None
