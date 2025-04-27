@@ -7,14 +7,15 @@ from telethon.sessions import StringSession
 from telethon import errors
 
 # BOT Settings
-BOT_TOKEN = "7775154408:AAHUqkKcgzOoGjUM2x13yT66lYBScUyOyFw"
-OWNER_ID = "5437233066"   # <- Only your Telegram ID can control the bot
+BOT_TOKEN = "7775154408:AAGfT04KJXR5jtOyTEMtrdNWstQy3rF3SzE"
+OWNER_ID = 5437233066   # <- Only your Telegram ID can control the bot
 
 # Bot Client
-bot = TelegramClient('bot_session', api_id="27866551", api_hash="76057a79a74262e29d6de1e9f41aab0d").start(bot_token=BOT_TOKEN)
+bot = TelegramClient('bot_session', api_id=27866551, api_hash="76057a79a74262e29d6de1e9f41aab0d").start(bot_token=BOT_TOKEN)
 
 # User Client (for forwarding)
 user_client = None
+login_waiting_for_code = False
 
 # Settings storage
 settings_file = "settings.json"
@@ -64,26 +65,42 @@ async def help_cmd(event):
 
 @bot.on(events.NewMessage(pattern='/login'))
 async def login(event):
-    global user_client
+    global user_client, login_waiting_for_code
     if event.sender_id != OWNER_ID:
         return
-    await event.reply("Starting login... Check logs.")
-    
-    async with SyncTelegramClient('user_session', api_id=YOUR_API_ID, api_hash="YOUR_API_HASH") as temp_client:
-        if not await temp_client.is_user_authorized():
-            phone = input("Enter your phone number: ")
-            await temp_client.send_code_request(phone)
-            code = input("Enter the code you received: ")
-            try:
-                await temp_client.sign_in(phone, code)
-            except errors.SessionPasswordNeededError:
-                pw = input("Two-step password enabled. Enter your password: ")
-                await temp_client.sign_in(password=pw)
-        print("Login successful!")
+    if login_waiting_for_code:
+        await event.reply("You are already in the login process. Please enter the code.")
+        return
+    login_waiting_for_code = True
+    await event.reply("Starting login... Please send your phone number.")
 
-    user_client = TelegramClient('user_session', api_id=YOUR_API_ID, api_hash="YOUR_API_HASH")
-    await user_client.start()
-    await event.reply("Login successful!")
+    @bot.on(events.NewMessage(func=lambda e: e.sender_id == OWNER_ID and login_waiting_for_code))
+    async def phone_handler(event):
+        global user_client, login_waiting_for_code
+        phone = event.text.strip()
+        await event.reply(f"Sending login code to {phone}...")
+
+        async with SyncTelegramClient('user_session', api_id=YOUR_API_ID, api_hash="YOUR_API_HASH") as temp_client:
+            await temp_client.send_code_request(phone)
+            await event.reply(f"Please enter the code you received.")
+
+            # Wait for the code
+            @bot.on(events.NewMessage(func=lambda e: e.sender_id == OWNER_ID and login_waiting_for_code))
+            async def code_handler(event):
+                code = event.text.strip()
+                try:
+                    await temp_client.sign_in(phone, code)
+                    await event.reply("Login successful!")
+                    login_waiting_for_code = False
+                    user_client = TelegramClient('user_session', api_id=YOUR_API_ID, api_hash="YOUR_API_HASH")
+                    await user_client.start()
+                except errors.SessionPasswordNeededError:
+                    pw = input("Two-step password enabled. Enter your password: ")
+                    await temp_client.sign_in(password=pw)
+                    await event.reply("Logged in successfully!")
+                except Exception as e:
+                    await event.reply(f"Login failed: {e}")
+                    login_waiting_for_code = False
 
 
 @bot.on(events.NewMessage(pattern='/list_chats'))
