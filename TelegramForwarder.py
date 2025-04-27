@@ -7,15 +7,15 @@ from telethon.sessions import StringSession
 from telethon import errors
 
 # BOT Settings
-BOT_TOKEN = "7775154408:AAGfT04KJXR5jtOyTEMtrdNWstQy3rF3SzE"
-OWNER_ID = 5437233066   # <- Only your Telegram ID can control the bot
+BOT_TOKEN = "7775154408:AAEmBTVW9Vk5Y0V_bu9jTY8VXy07Rcd0uZw"  # Replace with your bot token
+OWNER_ID = 5437233066  # Replace with your Telegram user ID (without quotes)
 
-# Bot Client
-bot = TelegramClient('bot_session', api_id=27866551, api_hash="76057a79a74262e29d6de1e9f41aab0d").start(bot_token=BOT_TOKEN)
-
-# User Client (for forwarding)
+# User Client Setup
 user_client = None
-login_waiting_for_code = False
+phone_number = None
+
+# Bot Client Setup
+bot = TelegramClient('bot_session', api_id=27866551, api_hash="76057a79a74262e29d6de1e9f41aab0d").start(bot_token=BOT_TOKEN)
 
 # Settings storage
 settings_file = "settings.json"
@@ -32,19 +32,18 @@ if os.path.exists(settings_file):
     with open(settings_file, "r") as f:
         settings.update(json.load(f))
 
-
 async def save_settings():
     with open(settings_file, "w") as f:
         json.dump(settings, f, indent=4)
 
-
+# /start command
 @bot.on(events.NewMessage(pattern='/start'))
 async def start(event):
     if event.sender_id != OWNER_ID:
         return
     await event.reply("Welcome to your Forwarder Bot!\nUse /help to see commands.")
 
-
+# /help command
 @bot.on(events.NewMessage(pattern='/help'))
 async def help_cmd(event):
     if event.sender_id != OWNER_ID:
@@ -62,47 +61,44 @@ async def help_cmd(event):
 """
     await event.reply(help_text)
 
-
+# /login command
 @bot.on(events.NewMessage(pattern='/login'))
 async def login(event):
-    global user_client, login_waiting_for_code
+    global user_client, phone_number
     if event.sender_id != OWNER_ID:
         return
-    if login_waiting_for_code:
-        await event.reply("You are already in the login process. Please enter the code.")
-        return
-    login_waiting_for_code = True
-    await event.reply("Starting login... Please send your phone number.")
-
-    @bot.on(events.NewMessage(func=lambda e: e.sender_id == OWNER_ID and login_waiting_for_code))
-    async def phone_handler(event):
-        global user_client, login_waiting_for_code
-        phone = event.text.strip()
-        await event.reply(f"Sending login code to {phone}...")
-
+    if phone_number is None:
+        await event.reply("Please send your phone number.")
+        phone_number = event.text.split(' ', 1)[1]  # Assuming phone number is sent in the same message
+        await event.reply(f"Sending login code to {phone_number}...")
         async with SyncTelegramClient('user_session', api_id=YOUR_API_ID, api_hash="YOUR_API_HASH") as temp_client:
-            await temp_client.send_code_request(phone)
-            await event.reply(f"Please enter the code you received.")
+            await temp_client.send_code_request(phone_number)
+        await event.reply(f"Code sent to {phone_number}. Please enter the code you received.")
+    else:
+        await event.reply("You are already in the login process. Please wait for the code to be entered.")
 
-            # Wait for the code
-            @bot.on(events.NewMessage(func=lambda e: e.sender_id == OWNER_ID and login_waiting_for_code))
-            async def code_handler(event):
-                code = event.text.strip()
-                try:
-                    await temp_client.sign_in(phone, code)
-                    await event.reply("Login successful!")
-                    login_waiting_for_code = False
-                    user_client = TelegramClient('user_session', api_id=YOUR_API_ID, api_hash="YOUR_API_HASH")
-                    await user_client.start()
-                except errors.SessionPasswordNeededError:
-                    pw = input("Two-step password enabled. Enter your password: ")
-                    await temp_client.sign_in(password=pw)
-                    await event.reply("Logged in successfully!")
-                except Exception as e:
-                    await event.reply(f"Login failed: {e}")
-                    login_waiting_for_code = False
+# Listen for /code input to handle code entry
+@bot.on(events.NewMessage(pattern='/code'))
+async def code_input(event):
+    global user_client, phone_number
+    if event.sender_id != OWNER_ID:
+        return
+    if phone_number is None:
+        await event.reply("Please use the /login command first.")
+        return
+    code = event.text.split(' ', 1)[1]  # Extract the code from the message
+    async with SyncTelegramClient('user_session', api_id=YOUR_API_ID, api_hash="YOUR_API_HASH") as temp_client:
+        try:
+            await temp_client.sign_in(phone_number, code)
+            user_client = temp_client
+            await event.reply(f"Login successful for {phone_number}!")
+            phone_number = None  # Reset phone number for next login
+        except errors.SessionPasswordNeededError:
+            await event.reply("Two-step password is enabled. Please provide the password.")
+        except Exception as e:
+            await event.reply(f"Login failed: {e}")
 
-
+# /list_chats command
 @bot.on(events.NewMessage(pattern='/list_chats'))
 async def list_chats(event):
     if event.sender_id != OWNER_ID:
@@ -116,7 +112,7 @@ async def list_chats(event):
             f.write(f"{d.id} - {d.title}\n")
     await event.reply(file='chats.txt')
 
-
+# /set_source command
 @bot.on(events.NewMessage(pattern='/set_source'))
 async def set_source(event):
     if event.sender_id != OWNER_ID:
@@ -129,7 +125,7 @@ async def set_source(event):
     except:
         await event.reply("Usage: /set_source <chat_id>")
 
-
+# /set_destination command
 @bot.on(events.NewMessage(pattern='/set_destination'))
 async def set_destination(event):
     if event.sender_id != OWNER_ID:
@@ -142,7 +138,7 @@ async def set_destination(event):
     except:
         await event.reply("Usage: /set_destination <chat_id>")
 
-
+# /set_keywords command
 @bot.on(events.NewMessage(pattern='/set_keywords'))
 async def set_keywords(event):
     if event.sender_id != OWNER_ID:
@@ -155,7 +151,7 @@ async def set_keywords(event):
     except:
         await event.reply("Usage: /set_keywords keyword1,keyword2")
 
-
+# /set_delay command
 @bot.on(events.NewMessage(pattern='/set_delay'))
 async def set_delay(event):
     if event.sender_id != OWNER_ID:
@@ -168,7 +164,7 @@ async def set_delay(event):
     except:
         await event.reply("Usage: /set_delay <seconds>")
 
-
+# /start_forwarding command
 @bot.on(events.NewMessage(pattern='/start_forwarding'))
 async def start_forwarding(event):
     if event.sender_id != OWNER_ID:
@@ -182,14 +178,14 @@ async def start_forwarding(event):
     if settings["forwarding"]:
         await event.reply("Already forwarding.")
         return
-    
+
     settings["forwarding"] = True
     await save_settings()
     await event.reply("Started forwarding.")
 
     asyncio.create_task(forward_messages())
 
-
+# /stop_forwarding command
 @bot.on(events.NewMessage(pattern='/stop_forwarding'))
 async def stop_forwarding(event):
     if event.sender_id != OWNER_ID:
@@ -198,7 +194,7 @@ async def stop_forwarding(event):
     await save_settings()
     await event.reply("Stopped forwarding.")
 
-
+# /status command
 @bot.on(events.NewMessage(pattern='/status'))
 async def status(event):
     if event.sender_id != OWNER_ID:
@@ -212,7 +208,6 @@ async def status(event):
 """
     await event.reply(msg)
 
-
 async def forward_messages():
     last_message_id = 0
 
@@ -220,7 +215,7 @@ async def forward_messages():
         try:
             messages = await user_client.get_messages(settings["source_chat_id"], min_id=last_message_id)
             messages = list(reversed(messages))
-            
+
             for msg in messages:
                 if not settings["forwarding"]:
                     break
@@ -235,17 +230,15 @@ async def forward_messages():
                         await asyncio.sleep(settings["delay"])
 
                 last_message_id = max(last_message_id, msg.id)
-        
+
         except Exception as e:
             print(f"Error: {e}")
 
         await asyncio.sleep(5)
 
-
 def main():
     print("Bot Started!")
     bot.run_until_disconnected()
-
 
 if __name__ == "__main__":
     main()
